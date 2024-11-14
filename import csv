@@ -1,0 +1,65 @@
+public function import_course_csv(Request $request)
+    {
+        try {
+            $request->validate([
+                'name' => 'required',
+                'file' => 'required' // Validate only CSV files
+            ]);
+
+            // Get the uploaded file
+            $upload = $request->file('file');
+            $filePath = $upload->getRealPath();
+
+            // Open and read the CSV file
+            $file = fopen($filePath, 'r');
+
+            // Read the header
+            $header = fgetcsv($file);
+            if ($header === false) {
+                return redirect()->back()->with('error', 'Error reading CSV header.');
+            }
+
+            // Clean and prepare the header for array keys
+            $escapedHeader = array_map(function ($value) {
+                return preg_replace('/[^a-z]/', '', strtolower(trim($value))); // Clean up header values
+            }, $header);
+
+            // Loop through each row in the CSV
+            while (($columns = fgetcsv($file)) !== false) {
+                if (empty($columns[0])) {
+                    continue; // Skip empty rows
+                }
+
+                // Clean up column values
+                $columns = array_map('trim', $columns);
+
+                // Check if header and columns match in count
+                if (count($escapedHeader) !== count($columns)) {
+                    Log::error('Header and columns do not match. Header: ' . json_encode($escapedHeader) . ' Columns: ' . json_encode($columns));
+                    continue; // Skip this row if counts don't match
+                }
+
+                // Combine header and columns into associative array
+                $data = array_combine($escapedHeader, $columns);
+                if ($data === false) {
+                    Log::error('Error combining data for columns: ', ['columns' => $columns]);
+                    continue; // Skip this row if combining fails
+                }
+
+                // Create RegisterUser entry
+                $company_id =  Auth::user()->company_id ?? Auth::id();
+
+                Course::create([
+                    'name' => $data['name'] ?? null,
+                ]);
+            }
+
+            fclose($file); // Close the file after processing
+
+            Toastr::success('Data Updated Successfully', 'Success');
+            return redirect()->back();
+        } catch (\Exception $e) {
+            Log::error('File upload error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred: ' . $e->getMessage());
+        }
+    }
