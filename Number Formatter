@@ -1,0 +1,9 @@
+ <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var totalSaleAmount = {{$totalSaleAmount}};
+                document.getElementById('totalSaleAmount').innerText = Intl.NumberFormat('en-US', {
+                    notation: "compact",
+                    maximumFractionDigits: 1
+                }).format(totalSaleAmount);
+            });
+        </script>
